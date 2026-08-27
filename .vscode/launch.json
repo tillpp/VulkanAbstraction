@@ -1,0 +1,69 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "(gdb) Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                {
+                    "name": "PATH",
+                    "value": "${env:PATH}:${command:cmake.getLaunchTargetDirectory}"
+                },
+                {
+                    "name": "OTHER_VALUE",
+                    "value": "Something something"
+                }
+            ],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "miDebuggerArgs": "-q -ex quit; wait() { fg >/dev/null; }; /bin/gdb -q --interpreter=mi",
+        },{
+            "name": "Debug Windows EXE with Wine & GDB",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "miDebuggerPath": "/home/uni/mingw-w64-v14.0.0/mingw-builds/install/cross/bin/x86_64-w64-mingw32-gdb",
+            "miDebuggerArgs": "-q -ex quit; wait() { fg >/dev/null; };/home/uni/mingw-w64-v14.0.0/mingw-builds/install/cross/bin/x86_64-w64-mingw32-gdb -q --interpreter=mi",
+            
+            "cwd": "${workspaceFolder}",
+            "miDebuggerServerAddress": "localhost:12345",
+            "environment": [
+                {
+                    // add the directory where our target was built to the PATHs
+                    // it gets resolved by CMake Tools:
+                    "name": "PATH",
+                    "value": "${env:PATH}:${command:cmake.getLaunchTargetDirectory}"
+                },
+                {
+                    "name": "OTHER_VALUE",
+                    "value": "Something something"
+                }
+            ],
+            "setupCommands": [
+                {
+                    "description": "Disable TTY",
+                    "text": "set new-console on",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Enable pretty-printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "Run Wine",
+        }
+    ]
+}

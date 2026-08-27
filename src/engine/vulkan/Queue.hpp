@@ -1,0 +1,14 @@
+#pragma once
+#include "engine/vulkan/common.hpp" // IWYU pragma: keep
+#include "engine/vulkan/Device.hpp"
+
+class Queue:public vk::raii::Queue
+{
+public:
+    Queue();
+    
+    uint32_t queueFamilyIndex;
+    
+    void create(DeviceSettings& queueList);
+    virtual bool isQueueFamilySuitable(vk::QueueFamilyProperties const & qfp,size_t queueFamilyIndex, vk::raii::PhysicalDevice& physicalDevice)=0;
+};

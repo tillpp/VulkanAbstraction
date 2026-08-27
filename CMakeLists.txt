@@ -1,0 +1,190 @@
+cmake_minimum_required(VERSION 3.13)  
+include(FetchContent)
+project(YAVOG)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+unset(Vulkan)
+unset(vulkan)
+
+if(WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+      add_compile_options(-m64 -Wa,-mbig-obj)
+endif()
+
+if(MSVC)
+  add_compile_options( -static -lpthread)
+endif()
+
+# sources
+file(GLOB_RECURSE SOURCE_FILES CONFIGURE_DEPENDS
+       ${PROJECT_SOURCE_DIR}/src/**.cpp
+       ${PROJECT_SOURCE_DIR}/src/**.c
+       )
+
+if(WIN32)
+       set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/windows)
+       set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/windows)
+       set(ARCHIVE_OUTPUT_DIRECTORY       ${CMAKE_SOURCE_DIR}/bin/windows)
+else()
+       set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/linux)
+       set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/linux)
+       set(ARCHIVE_OUTPUT_DIRECTORY       ${CMAKE_SOURCE_DIR}/bin/linux)
+endif(WIN32)
+
+set(BIN_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+FetchContent_Declare(
+  glfw
+  GIT_REPOSITORY https://github.com/glfw/glfw.git
+)
+FetchContent_Declare(
+  glm
+  GIT_REPOSITORY https://github.com/g-truc/glm.git
+)
+FetchContent_Declare(
+  stb
+  GIT_REPOSITORY https://github.com/nothings/stb.git
+  GIT_TAG 31c1ad37456438565541f4919958214b6e762fb4
+)
+FetchContent_Declare(
+  fastnoiselite
+  GIT_REPOSITORY https://github.com/Auburn/FastNoiseLite.git
+  GIT_TAG 4a17083770411d2af8fd99b1f249ea10143dc959 # don't remove Tag. Small star library, better check code after each update for malicious code.
+  SOURCE_SUBDIR Cpp
+)
+FetchContent_Declare(
+  freetype
+  GIT_REPOSITORY https://gitlab.freedesktop.org/freetype/freetype.git
+  GIT_TAG        b1f47850878d232eea372ab167e760ccac4c4e32 #version
+)
+FetchContent_Declare(
+  cgltf
+  GIT_REPOSITORY https://github.com/jkuhlmann/cgltf.git
+  GIT_TAG        v1.15
+)
+
+FetchContent_MakeAvailable(glfw glm stb fastnoiselite freetype cgltf)
+
+#vulkan
+FetchContent_Declare(
+  vulkan_headers
+  GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Headers.git
+  GIT_TAG vulkan-sdk-1.4.341.0
+)
+FetchContent_MakeAvailable(vulkan_headers)
+FetchContent_Declare(
+  vulkan_loader
+  GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Loader.git
+  GIT_TAG vulkan-sdk-1.4.341.0
+)
+FetchContent_MakeAvailable(vulkan_loader)
+message("xxx${vulkan_headers_SOURCE_DIR}/include")
+
+
+set(SLANG_VERSION 2025.1)
+if(WIN32)
+  FetchContent_Declare(
+    slang
+    URL https://github.com/shader-slang/slang/releases/download/v${SLANG_VERSION}/slang-${SLANG_VERSION}-windows-x86_64.zip
+  )
+  FetchContent_MakeAvailable(slang)
+else()
+    FetchContent_Declare(
+    slang
+    URL https://github.com/shader-slang/slang/releases/download/v${SLANG_VERSION}/slang-${SLANG_VERSION}-linux-x86_64.tar.gz
+  )
+  FetchContent_MakeAvailable(slang)
+endif(WIN32)
+
+
+include_directories(${CMAKE_SOURCE_DIR}/libs/include)
+link_directories(${CMAKE_SOURCE_DIR}/libs/lib)
+
+# Add executable target with source files listed in SOURCE_FILES variable
+add_executable (YAVOG ${SOURCE_FILES})
+target_include_directories(YAVOG PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/unrefactored ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+target_link_libraries(YAVOG glfw)
+target_link_libraries(YAVOG Vulkan::Loader)
+target_link_libraries(YAVOG glm)
+target_link_libraries(YAVOG freetype)
+target_link_libraries(YAVOG Vulkan::Headers)
+
+if(MSVC)
+  target_compile_options(YAVOG PRIVATE /wd2397 /wd4838)
+endif()
+
+target_include_directories(YAVOG PRIVATE ${stb_SOURCE_DIR})
+target_include_directories(YAVOG PRIVATE ${cgltf_SOURCE_DIR})
+target_include_directories(YAVOG PRIVATE
+  ${fastnoiselite_SOURCE_DIR}/Cpp
+)
+if(WIN32)
+  add_compile_definitions(_WIN32_WINNT=0x0600)
+  target_link_libraries(YAVOG ws2_32)
+  target_link_libraries(YAVOG wsock32)
+endif()
+
+if(MINGW)
+    target_link_options(YAVOG PRIVATE
+        -static-libgcc -static-libstdc++ -Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive
+    )
+endif()
+
+# shaders
+function (add_slang_shader_target TARGET)
+  set(multiValueArgs TARGETS SOURCES ENTRY)
+  cmake_parse_arguments ("SHADER" "" "OUT" "${multiValueArgs}" ${ARGN})
+  set (SHADERS_DIR ${BIN_OUTPUT_DIRECTORY}/shaders)
+  list (APPEND ENTRY_POINTS -entry vertMain -entry fragMain)
+  foreach(point IN LISTS SHADER_ENTRY)
+    list (APPEND ENTRY_POINTS -entry ${point})
+  endforeach()
+  
+
+  add_custom_command (
+          OUTPUT ${SHADERS_DIR}
+          COMMAND ${CMAKE_COMMAND} -E make_directory ${SHADERS_DIR}
+  )
+  add_custom_command (
+          OUTPUT  ${SHADERS_DIR}/${SHADER_OUT}.spv
+          COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} ${SLANGC_EXECUTABLE} ${SHADER_SOURCES} -target spirv -profile spirv_1_3 -emit-spirv-directly -fvk-use-entrypoint-name ${ENTRY_POINTS} -o ${SHADERS_DIR}/${SHADER_OUT}.spv
+          WORKING_DIRECTORY ${SHADERS_DIR}
+          DEPENDS ${SHADERS_DIR} ${SHADER_SOURCES} ${slang}
+          COMMENT "Compiling Slang Shaders"
+          VERBATIM
+  )
+  add_custom_target (${TARGET} DEPENDS ${SHADERS_DIR}/${SHADER_OUT}.spv )
+endfunction()
+
+
+if(WIN32)
+  set(SLANGC_EXECUTABLE "${slang_SOURCE_DIR}/bin/slangc.exe")
+else()
+  set(SLANGC_EXECUTABLE "${slang_SOURCE_DIR}/bin/slangc")
+endif(WIN32)
+
+
+file(GLOB_RECURSE SHADER_SLANG_SOURCES CONFIGURE_DEPENDS
+       ${PROJECT_SOURCE_DIR}/shaders/shader.slang)
+file(GLOB_RECURSE SHADER_SLANG_SOURCES_GUI CONFIGURE_DEPENDS
+       ${PROJECT_SOURCE_DIR}/shaders/gui.slang)
+file(GLOB_RECURSE SHADER_SLANG_SOURCES_TEXT CONFIGURE_DEPENDS
+       ${PROJECT_SOURCE_DIR}/shaders/text.slang)
+file(GLOB_RECURSE SHADER_SLANG_SOURCES_MODEL CONFIGURE_DEPENDS
+       ${PROJECT_SOURCE_DIR}/shaders/model.slang)
+file(GLOB_RECURSE SHADER_SLANG_SOURCES_CHUNK CONFIGURE_DEPENDS
+       ${PROJECT_SOURCE_DIR}/shaders/chunk.slang)
+
+
+# add_slang_shader_target( shaders SOURCES ${SHADER_SLANG_SOURCES} OUT slang)
+# add_slang_shader_target( shaders_gui SOURCES ${SHADER_SLANG_SOURCES_GUI} ENTRY "foreground" OUT gui)
+# add_slang_shader_target( shaders_text SOURCES ${SHADER_SLANG_SOURCES_TEXT} OUT text)
+# add_slang_shader_target( shaders_model SOURCES ${SHADER_SLANG_SOURCES_MODEL} OUT model)
+# add_slang_shader_target( shaders_chunk SOURCES ${SHADER_SLANG_SOURCES_CHUNK} OUT chunk)
+# add_dependencies(YAVOG shaders)
+# add_dependencies(YAVOG shaders_gui)
+# add_dependencies(YAVOG shaders_text)
+# add_dependencies(YAVOG shaders_model)
+# add_dependencies(YAVOG shaders_chunk)

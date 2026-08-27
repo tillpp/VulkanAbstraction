@@ -1,0 +1,40 @@
+#include "Filebasic.hpp"
+#include <cstdio>
+#include <fstream>
+#include <string>
+#include <vector>
+
+bool readFile(const std::filesystem::path& filename,std::string& data){
+    std::ifstream file(filename, std::ios::ate | std::ios::binary);
+    if (!file.is_open()) {
+        return false;
+    }
+    std::vector<char> buffer(file.tellg());
+    file.seekg(0, std::ios::beg);
+    file.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+    file.close();
+
+    data.insert(data.end(), buffer.begin(), buffer.end());
+    return true;
+}
+std::string readFileOrThrow(const std::filesystem::path& filename){
+    std::string data;
+    if(!readFile(filename,data)){
+        throw std::runtime_error("failed to read file :"+filename.string());
+    }
+    return data;
+}
+bool writeFile(const std::filesystem::path& filename,std::string data){
+    std::ofstream file(filename, std::ios::out | std::ios::binary);
+    if (!file.is_open()) {
+        return false;
+    }
+    file.write(data.data(), static_cast<std::streamsize>(data.size()));
+    file.close();
+    return true;
+}
+void writeFileOrThrow(const std::filesystem::path& filename,std::string data){
+    if(!writeFile(filename,data)){
+        throw std::runtime_error("failed to write file :"+filename.string());
+    }
+}
