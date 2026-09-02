@@ -212,3 +212,6 @@ Pipeline::~Pipeline(){
     if(swapchain)
         swapchain->trashCan.trash(std::move(pipelineLayout),std::move(graphicsPipeline));
 }
+void Pipeline::bind(CommandBuffer& cb,vk::PipelineBindPoint pipelineBindPoint){
+    cb.commandBuffer.bindPipeline(pipelineBindPoint, graphicsPipeline);
+}

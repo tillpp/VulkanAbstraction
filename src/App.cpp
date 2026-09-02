@@ -1,7 +1,12 @@
 #include "App.hpp"
 #include "GLFW/glfw3.h"
+#include "engine/vulkan/Buffer.hpp"
+#include "engine/vulkan/DefaultVertex.hpp"
+#include "engine/vulkan/DescriptorLayout.hpp"
 #include "engine/vulkan/GraphicsQueue.hpp"
 #include "engine/vulkan/Instance.hpp"
+#include "engine/vulkan/Pipeline.hpp"
+#include "vulkan/vulkan.hpp"
 #include <cassert>
 #include <cmath>
 #include <linux/limits.h>
@@ -53,6 +58,20 @@ void App::initVulkan(){
 
 }
 bool App::run(){
+    Pipeline pipeline;
+    DescriptorSetLayout dsl;
+    Buffer buffer;
+
+    DefaultVertex data[3];
+    buffer.createAndUpload(window, data, 3*sizeof(DefaultVertex), vk::BufferUsageFlags::BitsType::eVertexBuffer);
+    dsl.create(device, {});
+    pipeline.create(
+        window, device, 
+        projectDir/"bin/shaders/shader.spv", 
+        "vertMain", "fragMain", 
+        DefaultVertex::getBindingDescription(), DefaultVertex::getAttributeDescriptions(),
+        dsl, Pipeline::noStencil, window.depthBuffer, false, {});
+
     while(auto cb = window.update()){
         cb->commandBuffer.setViewport(0, vk::Viewport{
             .x = 0.0f,
@@ -67,7 +86,10 @@ bool App::run(){
             .extent = window.swapchain.swapChainExtent,
         });
 
-    
+        pipeline.bind(*cb,vk::PipelineBindPoint::eGraphics);
+        buffer.bindAsVertexBuffers(*cb, 0);
+        cb->draw(3, 1, 0, 0);
+
         glfwPollEvents();
     }
     window.inputHandler.reset();

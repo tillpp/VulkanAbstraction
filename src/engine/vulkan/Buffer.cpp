@@ -70,3 +70,6 @@ void Buffer::createAndUpload(Window& window,const void* ptr,size_t size,vk::Flag
     create(window,device,size, usage,properties);
     copyBuffer(window.commandPool,stagingBuffer, *this, size);
 }
+void Buffer::bindAsVertexBuffers(CommandBuffer& cb,vk::DeviceSize offset){
+    cb.commandBuffer.bindVertexBuffers(0, *buffer, {offset});
+}

@@ -1,5 +1,6 @@
 #pragma once
 #include <filesystem>
+#include "engine/vulkan/CommandBuffer.hpp"
 #include "engine/vulkan/Swapchain.hpp"
 #include "engine/vulkan/DepthBuffer.hpp"
 
@@ -30,8 +31,10 @@ public:
         std::vector<vk::VertexInputAttributeDescription> attributeDescriptions,
         class DescriptorSetLayout& dsLayout,
         Stencil stencil,
-        DepthBuffer& depthBuffer, bool depthTesting = true,
-        std::optional<class PushConstant*> pushConstant = {});
+        DepthBuffer& depthBuffer, bool depthTesting,
+        std::optional<class PushConstant*> pushConstant);
     ~Pipeline();
+
+    void bind(CommandBuffer& cb,vk::PipelineBindPoint pipelineBindPoint);
 };
 
