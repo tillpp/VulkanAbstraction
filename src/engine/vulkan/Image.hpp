@@ -5,9 +5,7 @@
 #include "engine/vulkan/Device.hpp"
 #include "engine/vulkan/CommandBuffer.hpp"
 #include <filesystem>
-
 #include "engine/vulkan/Descriptor.hpp"
-#include "engine/vulkan/RenderSync.hpp"
 #include "vulkan/vulkan.hpp"
 #include <filesystem>
 #include <memory>

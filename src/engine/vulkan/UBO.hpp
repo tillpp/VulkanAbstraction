@@ -2,7 +2,6 @@
 #include "engine/vulkan/common.hpp"// IWYU pragma: keep
 #include "engine/vulkan/Descriptor.hpp"
 #include "engine/vulkan/Device.hpp"
-#include "engine/vulkan/RenderSync.hpp"
 #include "engine/vulkan/Buffer.hpp"
 #include <cstddef>
 #include <memory>

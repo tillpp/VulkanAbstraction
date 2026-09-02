@@ -1,5 +1,5 @@
 #pragma once
-#include "engine/vulkan/RenderSync.hpp"
+#include "engine/vulkan/Swapchain.hpp"
 #include "engine/vulkan/Image.hpp"
 
 
@@ -10,12 +10,12 @@ class DepthBuffer
     static bool hasStencilComponent(vk::Format format);
     static vk::Format findDepthFormat(Device& device,bool withStencil);
 
-    RenderSync* render = nullptr;
+    Swapchain* swapchain = nullptr;
     bool withStencil = false;
 public:
+    vk::Format depthFormat;
     
     Image image;
-    vk::Format depthFormat;
 
     void create(class Window& window,bool withStencil);
     void recreate(class Window& window);

@@ -1,22 +1,31 @@
 #include "Window.hpp"
-#include <GLFW/glfw3.h>
-#include "Event.hpp"
 #include "engine/vulkan/Device.hpp"
+#include "engine/vulkan/Swapchain.hpp"
+#include <cassert>
 
 int64_t glfwCount = 0;
 
-
-Window::Window(InstanceSettings* settings,DeviceSettings* dSettings):swapChain(*dSettings)
-{
+Window::Window(){
     if(glfwCount == 0){
         glfwInit();
     }
     glfwCount++;
-
+}
+Window::~Window(){
+    swapchain.clear();
+    commandPool.clear();
+    
+    close();
+    glfwCount--;
+    if(glfwCount == 0){
+        glfwTerminate();
+    }
+}
+void Window::addRequirements(InstanceSetup& vs){
     // add extensions to wishlist:
     uint32_t glfwExtensionCount = 0;
     auto glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-    settings->extensions.insert(glfwExtensions,glfwExtensions+glfwExtensionCount);
+    vs.extensions.insert(glfwExtensions,glfwExtensions+glfwExtensionCount);
 
     // check if the extensions are available
     vk::raii::Context context;
@@ -30,34 +39,14 @@ Window::Window(InstanceSettings* settings,DeviceSettings* dSettings):swapChain(*
             throw std::runtime_error("Required GLFW extension not supported: " + std::string(glfwExtensions[i]));
         }
     }
-
-    dSettings->callAfterCreation.push_back([&](Device& device){
-        swapChain.create(*this, device);
-        commandPool.create(device, gQueue);
-        render.create(commandPool, swapChain);
-        depthBuffer.create(*this, false);
-    });
 }
-
-Window::~Window()
-{
-    render.clear();
-    commandPool.clear();
-    close();
-    glfwCount--;
-    if(glfwCount == 0){
-        glfwTerminate();
-    }
-}
-Window::operator GLFWwindow*(){
-    return window;
-}
-void Window::create(Instance& instance,DeviceSettings* deviceSettings,int width, int height, const char *title){
+void Window::create(Instance& instance,DeviceSetup& dSetup,int width, int height, const char *title){
     // window 
+    assert(!window);
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     window = glfwCreateWindow(width,height,title, nullptr, nullptr);
     glfwSetWindowUserPointer(window,(void*)this);
-    
+
     // surface
     VkSurfaceKHR       _surface;
     if (glfwCreateWindowSurface(*(vk::raii::Instance&)instance, window, nullptr, &_surface) != 0) {
@@ -65,11 +54,27 @@ void Window::create(Instance& instance,DeviceSettings* deviceSettings,int width,
     }
     surface = vk::raii::SurfaceKHR(instance, _surface);
 
-    // create adjacent stuff
-    gQueue.create(*this, *deviceSettings);
+    gQueue.create(dSetup,*this);
+    Swapchain::addRequirements(dSetup);
+    dSetup.callAfterCreation.push_back(this);
 
-    
-    // callback 
+    initEventCallback();
+}
+void Window::afterDeviceInit(class Device& device){
+    commandPool.create(device, gQueue);
+    swapchain.create(device,*this);
+    depthBuffer.create(*this, false);
+}
+
+void Window::close(){
+    glfwDestroyWindow(window);
+    window = nullptr;
+}
+Window::operator GLFWwindow*(){
+    return window;
+}
+void Window::initEventCallback(){
+     // callback 
     glfwSetFramebufferSizeCallback(window,[](GLFWwindow* window, int width, int height){
         auto self = (Window*)glfwGetWindowUserPointer(window);
         self->shouldRecreateSwapchain = true;
@@ -122,28 +127,7 @@ void Window::create(Instance& instance,DeviceSettings* deviceSettings,int width,
     });
     toggleMouseGrab();
 }
-void Window::close(){
-    glfwDestroyWindow(window);
-    window = nullptr;
-}
-CommandBuffer* Window::update(){
-    assert(window);
-    if(glfwWindowShouldClose(window))
-        return nullptr;
 
-    if(currentCB){
-        swapChain.images[render.imageIndex].endRendering(*currentCB);
-        currentCB->end();
-        render.end(*this, &depthBuffer);
-    }
-
-    // new image
-    while(!render.begin(*this, nullptr));
-    currentCB = &render.getCommandBuffer();
-    currentCB->begin();
-    swapChain.images[render.imageIndex].beginRendering(*currentCB, &depthBuffer);
-    return currentCB;
-}
 void Window::toggleFullscreen(){
     int count;
     auto monitors =  glfwGetMonitors(&count);
@@ -170,4 +154,23 @@ void Window::toggleMouseGrab(){
 }
 bool Window::isMouseGrabbed()const{
     return grabMouse;
+}
+
+CommandBuffer* Window::update(){
+    assert(window);
+    if(glfwWindowShouldClose(window))
+        return nullptr;
+
+    if(currentCB){
+        swapchain.images[swapchain.imageIndex].endRendering(*currentCB);
+        currentCB->end();
+        swapchain.end();
+    }
+
+    // new image
+    while(!swapchain.begin());
+    currentCB = &swapchain.getCommandBuffer();
+    currentCB->begin();
+    swapchain.images[swapchain.imageIndex].beginRendering(*currentCB,&depthBuffer);
+    return currentCB;
 }

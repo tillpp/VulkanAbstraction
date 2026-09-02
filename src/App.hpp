@@ -1,5 +1,6 @@
 #pragma once
 #include "engine/vulkan/Device.hpp"
+#include "engine/vulkan/GraphicsQueue.hpp"
 #include "engine/vulkan/Instance.hpp"
 #include "engine/vulkan/Window.hpp"
 #include <filesystem>
@@ -8,14 +9,11 @@ class App{
     std::filesystem::path projectDir;
 public:
     App(std::filesystem::path projectDir);
-
-    // // vulkan
-    InstanceSettings settings;
-    Instance instance;
-    DeviceSettings dSettings;
-    Device device;
-    Window window;
     
+    Instance      instance;
+    Device        device;
+    Window        window;
+
     void initVulkan();
     
     ///@return restart?

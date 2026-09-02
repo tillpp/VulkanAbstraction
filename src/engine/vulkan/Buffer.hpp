@@ -1,12 +1,12 @@
 #pragma once
-#include "engine/vulkan/RenderSync.hpp"
+#include "engine/vulkan/Swapchain.hpp"
 
 //NOTE: there are only 4096 max memory allocations, split bigger buffers into smaller ones with offset. (TODO: custom allocator)
 //NOTE: IndexBuffer and VertexBuffer in one, is more cache friendly.
 //TODO: learn more about "aliasing" in Vulkan
 
 class Buffer{
-    RenderSync* render = nullptr;
+    Swapchain* swapchain = nullptr;
 public:
     vk::raii::DeviceMemory bufferMemory = nullptr;
     vk::raii::Buffer       buffer       = nullptr;

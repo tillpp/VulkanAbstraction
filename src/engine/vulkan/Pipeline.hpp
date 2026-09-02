@@ -1,6 +1,6 @@
 #pragma once
 #include <filesystem>
-#include "engine/vulkan/RenderSync.hpp"
+#include "engine/vulkan/Swapchain.hpp"
 #include "engine/vulkan/DepthBuffer.hpp"
 
 
@@ -10,10 +10,10 @@ class Pipeline
         Device& device,
         const std::string& code) const;
 
-    RenderSync* render = nullptr;
+    Swapchain* swapchain = nullptr;
 public:
-    vk::raii::PipelineLayout pipelineLayout = nullptr;
-    vk::raii::Pipeline graphicsPipeline = nullptr;
+    vk::raii::PipelineLayout pipelineLayout   = nullptr;
+    vk::raii::Pipeline       graphicsPipeline = nullptr;
 
     enum Stencil{
         writeStencil,

@@ -29,7 +29,7 @@ void Pipeline::create(
     DepthBuffer& depthBuffer,bool depthTesting,
     std::optional<PushConstant*> pushConstant
 ) {
-    this->render = &window.render;
+    this->swapchain = &window.swapchain;
     // shader
     vk::raii::ShaderModule shaderModule = createShaderModule(device,readFileOrThrow(shaderFile));
     vk::PipelineShaderStageCreateInfo vertShaderStageInfo{ 
@@ -180,7 +180,7 @@ void Pipeline::create(
     // dynamic rendering
     vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo{ 
         .colorAttachmentCount = 1, 
-        .pColorAttachmentFormats = &window.swapChain.surfaceFormat.format, 
+        .pColorAttachmentFormats = &window.swapchain.surfaceFormat.format, 
         .depthAttachmentFormat = depthBuffer.depthFormat,
     };
     if(stencil != noStencil){
@@ -209,6 +209,6 @@ void Pipeline::create(
     // TODO: learn more about pipeline caching.
 }
 Pipeline::~Pipeline(){
-    if(render)
-        render->trash(std::move(pipelineLayout),std::move(graphicsPipeline));
+    if(swapchain)
+        swapchain->trashCan.trash(std::move(pipelineLayout),std::move(graphicsPipeline));
 }

@@ -87,12 +87,14 @@ if(WIN32)
   FetchContent_Declare(
     slang
     URL https://github.com/shader-slang/slang/releases/download/v${SLANG_VERSION}/slang-${SLANG_VERSION}-windows-x86_64.zip
+    DOWNLOAD_EXTRACT_TIMESTAMP NEW
   )
   FetchContent_MakeAvailable(slang)
 else()
     FetchContent_Declare(
     slang
     URL https://github.com/shader-slang/slang/releases/download/v${SLANG_VERSION}/slang-${SLANG_VERSION}-linux-x86_64.tar.gz
+    DOWNLOAD_EXTRACT_TIMESTAMP NEW
   )
   FetchContent_MakeAvailable(slang)
 endif(WIN32)

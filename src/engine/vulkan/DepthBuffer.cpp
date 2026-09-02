@@ -1,5 +1,5 @@
 #include "DepthBuffer.hpp"
-#include "engine/vulkan/RenderSync.hpp"
+#include "engine/vulkan/Swapchain.hpp"
 #include "engine/vulkan/Image.hpp"
 #include "engine/vulkan/Window.hpp"
 #include <memory>
@@ -35,15 +35,15 @@ vk::Format DepthBuffer::findDepthFormat(Device& device,bool withStencil) {
 }
 void DepthBuffer::create(class Window& window,bool withStencil){
     this->withStencil = withStencil;
-    this->render = &window.render;
+    this->swapchain = &window.swapchain;
     recreate(window);    
 }
 void DepthBuffer::recreate(class Window& window){
     depthFormat = findDepthFormat(window.commandPool.getDevice(),withStencil);
     image.current = std::make_shared<Image::Reincarnation>();
     image.current->initImage(window.commandPool.getDevice(),
-        window.swapChain.swapChainExtent.width, 
-        window.swapChain.swapChainExtent.height, 
+        window.swapchain.swapChainExtent.width, 
+        window.swapchain.swapChainExtent.height, 
         depthFormat, 
         vk::SampleCountFlagBits::e1,
         vk::ImageTiling::eOptimal, 
@@ -60,8 +60,8 @@ void DepthBuffer::recreate(class Window& window){
     );
 }
 DepthBuffer::~DepthBuffer(){
-    if(render){
-        render->trash(image.getCurrent());
+    if(swapchain){
+        swapchain->trashCan.trash(image.getCurrent());
     }   
 }
 bool DepthBuffer::hasStencil()const{

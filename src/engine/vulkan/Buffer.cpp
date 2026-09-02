@@ -26,16 +26,16 @@ void Buffer::copyBuffer(CommandPool& commandPool,Buffer& srcBuffer, Buffer& dstB
     commandBuffer.endSingleTimeCommands(commandPool);
 }
 Buffer::~Buffer(){
-    if(render)
-        render->trash(std::move(buffer),std::move(bufferMemory));
+    if(swapchain)
+        swapchain->trashCan.trash(std::move(buffer),std::move(bufferMemory));
 }
 void Buffer::create(Window& window,Device& device,vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties) {
-    if(this->render)
-        assert(this->render == &window.render);
-    this->render = &window.render;
+    if(this->swapchain)
+        assert(this->swapchain == &window.swapchain);
+    this->swapchain = &window.swapchain;
 
-    if(render)
-        render->trash(std::move(buffer),std::move(bufferMemory));
+    if(swapchain)
+        swapchain->trashCan.trash(std::move(buffer),std::move(bufferMemory));
     
 
     vk::BufferCreateInfo bufferInfo{ 

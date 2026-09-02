@@ -3,7 +3,6 @@
 Queue::Queue():vk::raii::Queue(nullptr){
 
 }
-
-void Queue::create(DeviceSettings& deviceSettings){
-    deviceSettings.queues.push_back(this);
+void Queue::create(DeviceSetup& deviceSetup){
+    deviceSetup.queues.push_back(this);
 }

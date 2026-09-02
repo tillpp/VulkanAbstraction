@@ -17,3 +17,5 @@
 #include <map>
 #include <optional> 
 // IWYU pragma: end_keep
+
+static const uint32_t MAX_FRAMES_IN_FLIGHT = 2;

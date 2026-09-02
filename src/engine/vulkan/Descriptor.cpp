@@ -1,19 +1,18 @@
 #include "Descriptor.hpp"
-#include "engine/vulkan/UBO.hpp"
-
+#include "engine/vulkan/Swapchain.hpp"
 #include "engine/vulkan/Pipeline.hpp"
 #include "engine/vulkan/Window.hpp"
 #include <cassert>
 #include <vector>
 
-DescriptorSet::Binding::Binding(RenderSync& render,const DescriptorLayout& dsLayout):DescriptorLayout(dsLayout){
-    for (int i = 0; i<render.MAX_FRAMES_IN_FLIGHT; i++) {
+DescriptorSet::Binding::Binding(const DescriptorLayout& dsLayout):DescriptorLayout(dsLayout){
+    for (int i = 0; i<MAX_FRAMES_IN_FLIGHT; i++) {
         frames.push_back({});
     }
 }
 
 void DescriptorSet::create(Device& device,Window& window,DescriptorSetLayout& dsl,std::vector<DescriptorLayout> dsArray){
-    this->render = &window.render;
+    this->swapchain = &window.swapchain;
     //pool creation
     {
         std::map<vk::DescriptorType,uint32_t> poolsizes;
@@ -28,20 +27,20 @@ void DescriptorSet::create(Device& device,Window& window,DescriptorSetLayout& ds
             poolSize.push_back(
                 vk::DescriptorPoolSize{
                     .type = pair.first,
-                    .descriptorCount = render->MAX_FRAMES_IN_FLIGHT*pair.second,
+                    .descriptorCount = MAX_FRAMES_IN_FLIGHT*pair.second,
                 }
             );
         }
         vk::DescriptorPoolCreateInfo poolInfo{ 
             .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-            .maxSets = render->MAX_FRAMES_IN_FLIGHT,
+            .maxSets = MAX_FRAMES_IN_FLIGHT,
             .poolSizeCount = (uint32_t)poolSize.size(),
             .pPoolSizes = poolSize.data(),
         };
         descriptorPool = vk::raii::DescriptorPool(device.device, poolInfo);
     }
     {
-        std::vector<vk::DescriptorSetLayout> layouts(render->MAX_FRAMES_IN_FLIGHT, *dsl.descriptorSetLayout);
+        std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *dsl.descriptorSetLayout);
         vk::DescriptorSetAllocateInfo allocInfo{ 
             .descriptorPool = descriptorPool, 
             .descriptorSetCount = static_cast<uint32_t>(layouts.size()), 
@@ -53,13 +52,13 @@ void DescriptorSet::create(Device& device,Window& window,DescriptorSetLayout& ds
     }
     for (auto& dsLayout : dsArray) {
         mappingID2Index[dsLayout.binding] = bindings.size();
-        bindings.emplace_back(*render,dsLayout);
+        bindings.emplace_back(dsLayout);
     }
 }
 void DescriptorSet::bind(Device& device,vk::raii::CommandBuffer& commandBuffer,Window& window, Pipeline& pipeline,uint32_t firstSet ){
     //Updating reincarnations:
 
-    auto fi = window.render.getFrameIndex();
+    auto fi = window.swapchain.getFrameIndex();
 
     std::vector<vk::WriteDescriptorSet> descriptorWrites;
     DescriptorInfo descriptorInfos[bindings.size()];
@@ -101,15 +100,16 @@ void DescriptorSet::setResource(size_t binding,std::shared_ptr<Resource> resourc
     bindings[mappingID2Index[binding]].resource = resource;
 }
 DescriptorSet::~DescriptorSet(){
-    if(render){
+    if(swapchain){
+        auto& trashCan = swapchain->trashCan;
         for(auto& bind:bindings){
             for(auto& frame:bind.frames){
-                render->trash(frame.reincarnation);
+                trashCan.trash(frame.reincarnation);
             }
         }
-        render->trash(std::move(descriptorPool));
+        trashCan.trash(std::move(descriptorPool));
         for(auto& ds:descriptorSets){
-            render->trash(std::move(ds));
+            trashCan.trash(std::move(ds));
         }
     }
 }

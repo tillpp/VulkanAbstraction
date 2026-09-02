@@ -1,7 +1,6 @@
 #pragma once
-#include "engine/vulkan/common.hpp"
+#include "engine/vulkan/common.hpp"// IWYU pragma: keep
 #include "engine/vulkan/DescriptorLayout.hpp"
-#include "engine/vulkan/RenderSync.hpp"
 #include <cstddef>
 #include <map>
 #include <memory>
@@ -36,18 +35,18 @@ class DescriptorSet{
         };
         std::vector<Frame> frames;
 
-        Binding(RenderSync& render,const DescriptorLayout& dsLayout);
+        Binding(const DescriptorLayout& dsLayout);
     };
     std::vector<Binding> bindings;
     std::map<size_t, size_t> mappingID2Index;
 
-    RenderSync* render = nullptr;
+    class Swapchain* swapchain = nullptr;
 public:
     vk::raii::DescriptorPool descriptorPool = nullptr;
     std::vector<vk::raii::DescriptorSet> descriptorSets;
 
 
-    void create(Device& device,Window& window,DescriptorSetLayout& dsl,std::vector<DescriptorLayout> dsArray);
+    void create(Device& device,class Window& window,DescriptorSetLayout& dsl,std::vector<DescriptorLayout> dsArray);
     void bind(Device& device,vk::raii::CommandBuffer& commandBuffer,Window& window, class Pipeline& pipeline,uint32_t firstSet = 0);
 
     void setResource(size_t binding,std::shared_ptr<Resource> resource);

@@ -283,7 +283,7 @@ void Image::create(Window& window,int texWidth, int texHeight,stbi_uc* pixels,bo
 
     
     if(foreachFrame){
-        for (int i = 0; i < window.render.MAX_FRAMES_IN_FLIGHT; i++) {
+        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             auto v = std::make_shared<Reincarnation>();
             fun(v);
             frames.push_back(v);

@@ -1,27 +1,30 @@
-#include "Swapchain.hpp"
 #include "engine/vulkan/Image.hpp"
-#include "engine/vulkan/Window.hpp"
+#include "Swapchain.hpp"
+#include "Window.hpp"
 
-Swapchain::Swapchain(DeviceSettings& deviceSettings){
-    deviceSettings.extensions.push_back(vk::KHRSwapchainExtensionName);
+void Swapchain::addRequirements(DeviceSetup& ds){
+    ds.extensions.push_back(vk::KHRSwapchainExtensionName);
 }
-Swapchain::~Swapchain(){
+void Swapchain::create(Device& device,Window& window){
+    this->window = &window;
+    this->device = &device;
 
+    createSwapchain();
+    createSync();
 }
-
-void Swapchain::create(Window& window,Device& device)
-{
-    vk::SurfaceCapabilitiesKHR surfaceCapabilities = device.physicalDevice.getSurfaceCapabilitiesKHR( *window.surface );
-    swapChainExtent                                = chooseSwapExtent(window,surfaceCapabilities);
+void Swapchain::createSwapchain(){
+    vk::SurfaceCapabilitiesKHR surfaceCapabilities = device->physicalDevice.getSurfaceCapabilitiesKHR( *window->surface );
+    swapChainExtent                                = chooseSwapExtent(*window,surfaceCapabilities);
     uint32_t minImageCount                         = chooseSwapMinImageCount(surfaceCapabilities);
 
-    std::vector<vk::SurfaceFormatKHR> availableFormats = device.physicalDevice.getSurfaceFormatsKHR( window.surface );
+        
+    std::vector<vk::SurfaceFormatKHR> availableFormats = device->physicalDevice.getSurfaceFormatsKHR( window->surface );
     surfaceFormat                             = chooseSwapSurfaceFormat(availableFormats);
 
-    std::vector<vk::PresentModeKHR> availablePresentModes = device.physicalDevice.getSurfacePresentModesKHR( window.surface );
+    std::vector<vk::PresentModeKHR> availablePresentModes = device->physicalDevice.getSurfacePresentModesKHR( window->surface );
 
     vk::SwapchainCreateInfoKHR swapChainCreateInfo{
-        .surface          = *window.surface,
+        .surface          = *window->surface,
         .minImageCount    = minImageCount,
         .imageFormat      = surfaceFormat.format,
         .imageColorSpace  = surfaceFormat.colorSpace,
@@ -34,8 +37,9 @@ void Swapchain::create(Window& window,Device& device)
         .presentMode      = chooseSwapPresentMode(availablePresentModes),
         .clipped          = true,
     };
-    swapChain       = vk::raii::SwapchainKHR( device.device, swapChainCreateInfo );
+    swapChain       = vk::raii::SwapchainKHR( device->device, swapChainCreateInfo );
     auto _images = swapChain.getImages();
+
     {
         images.clear();
         for (auto &_image : _images)
@@ -43,19 +47,28 @@ void Swapchain::create(Window& window,Device& device)
             Image::Reincarnation image;
             image.initExisitingImage(_image,swapChainExtent);
             image.createImageView(
-                device, 
+                *device, 
                 surfaceFormat.format, 
                 vk::ImageAspectFlagBits::eColor);
             images.emplace_back( std::move(image) );
         }
-    }   
+    }  
+    //TODO: update all dependees of the window screensize
+    window->depthBuffer.recreate(*window);
 }
-void Swapchain::recreate(Window& window,Device& device){
-    device.device.waitIdle();
-
-    // cleanup swap chain
-    swapChain = nullptr;
-    create(window,device);
+void Swapchain::createSync(){
+    // rendering stuff
+    assert(presentCompleteSemaphores.empty() && renderFinishedSemaphores.empty() && inFlightFences.empty());
+    for (size_t i = 0; i < images.size(); i++)
+    {
+        renderFinishedSemaphores.emplace_back(device->device, vk::SemaphoreCreateInfo());
+    }
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        presentCompleteSemaphores.emplace_back(device->device, vk::SemaphoreCreateInfo());
+        inFlightFences.emplace_back(device->device, vk::FenceCreateInfo{.flags = vk::FenceCreateFlagBits::eSignaled});
+        commandBuffers.emplace_back(window->commandPool);
+    }
 }
 
 
@@ -96,7 +109,105 @@ uint32_t Swapchain::chooseSwapMinImageCount(vk::SurfaceCapabilitiesKHR const &su
     }
     return minImageCount;
 }
+
+
+// render sync
+CommandBuffer& Swapchain::getCommandBuffer(){
+    return commandBuffers[frameIndex];
+}
+
+uint32_t const& Swapchain::getFrameIndex()const{
+    return frameIndex;
+}
+void Swapchain::recreate(){
+    int width = 0, height = 0;
+    glfwGetFramebufferSize(*window, &width, &height);
+
+    while (width == 0 || height == 0) {
+        glfwGetFramebufferSize(*window, &width, &height);
+        glfwWaitEvents();
+    }
+    device->device.waitIdle();
+
+    // cleanup swap chain
+    swapChain = nullptr;
+    createSwapchain();
+}
+Swapchain::Swapchain():trashCan(*this){
+}
+Swapchain::~Swapchain(){
+    clear();
+}
+void Swapchain::clear(){
+    if(device)
+        device->device.waitIdle();
+    trashCan.clearAll();
+    commandBuffers.clear();
+    presentCompleteSemaphores.clear();
+    renderFinishedSemaphores.clear();
+    inFlightFences.clear();
+    frameIndex = 0;
+    device = nullptr;
+}
+
+bool Swapchain::begin(){
+    auto& queue = window->gQueue;
+
+    auto fenceResult = device->device.waitForFences(*inFlightFences[frameIndex], vk::True, UINT64_MAX);
+	if (fenceResult != vk::Result::eSuccess)
+	{
+		throw std::runtime_error("failed to wait for fence!");
+	}
+    auto [result, _imageIndex] = swapChain.acquireNextImage(UINT64_MAX, *presentCompleteSemaphores[frameIndex], nullptr);
+    if(result == vk::Result::eErrorOutOfDateKHR){
+        recreate();
+        return false;
+    }
+    else if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
+    {
+        assert(result == vk::Result::eTimeout || result == vk::Result::eNotReady);
+        throw std::runtime_error("failed to acquire swap chain image!");
+    }
     
+    device->device.resetFences(*inFlightFences[frameIndex]);
+	commandBuffers[frameIndex].commandBuffer.reset();
+
+    imageIndex = _imageIndex;
+    trashCan.clear();
+    return true;
+}
+void Swapchain::end(){
+    auto& queue = window->gQueue;
+    
+    vk::PipelineStageFlags waitDestinationStageMask( vk::PipelineStageFlagBits::eColorAttachmentOutput );
+    const vk::SubmitInfo   submitInfo{
+        .waitSemaphoreCount   = 1,
+        .pWaitSemaphores      = &*presentCompleteSemaphores[frameIndex],
+        .pWaitDstStageMask    = &waitDestinationStageMask,
+        .commandBufferCount   = 1,
+        .pCommandBuffers      = &*commandBuffers[frameIndex].commandBuffer,
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores    = &*renderFinishedSemaphores[imageIndex]
+    };
+    queue.submit(submitInfo, *inFlightFences[frameIndex]);
 
 
-
+    const vk::PresentInfoKHR presentInfoKHR{
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores    = &*renderFinishedSemaphores[imageIndex],
+        .swapchainCount     = 1,
+        .pSwapchains        = &*swapChain,
+        .pImageIndices      = &imageIndex};
+    auto result = queue.presentKHR(presentInfoKHR);
+    if ((result == vk::Result::eSuboptimalKHR) || (result == vk::Result::eErrorOutOfDateKHR)||window->shouldRecreateSwapchain){
+        window->shouldRecreateSwapchain = false;
+        recreate();
+    }
+    else
+    {
+        // There are no other success codes than eSuccess; on any error code, presentKHR already threw an exception.
+        assert(result == vk::Result::eSuccess);
+    }
+    
+    frameIndex = (frameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
+}

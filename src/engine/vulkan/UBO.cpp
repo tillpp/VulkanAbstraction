@@ -15,7 +15,7 @@ void UBO::create(Window& window,Device& device,vk::DeviceSize bufferSize){
     // for memory
     frames.clear();
 
-    for (size_t i = 0; i < window.render.MAX_FRAMES_IN_FLIGHT; i++) {
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         
         auto reincarnation = std::make_shared<Reincarnation>();
         frames.push_back(reincarnation);
