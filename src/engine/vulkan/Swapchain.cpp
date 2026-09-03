@@ -54,7 +54,7 @@ void Swapchain::createSwapchain(){
         }
     }  
     //TODO: update all dependees of the window screensize
-    window->depthBuffer.recreate(*window);
+    window->depthBuffer.recreate(*window,swapChainExtent);
 }
 void Swapchain::createSync(){
     // rendering stuff

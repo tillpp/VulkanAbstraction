@@ -18,6 +18,7 @@ public:
     static uint32_t findMemoryType(Device& device,uint32_t typeFilter, vk::MemoryPropertyFlags properties);
     static void copyBuffer(CommandPool& commandPool,Buffer& srcBuffer, Buffer& dstBuffer, vk::DeviceSize size);
 
+    //TODO: Buffer shouldnt rely on window
     void create(class Window& window,Device& device,vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
     void createAndUpload(class Window& window,const void* ptr,size_t size,vk::Flags<vk::BufferUsageFlagBits> usage);
 

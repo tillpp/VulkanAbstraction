@@ -2,14 +2,18 @@
 #include "GLFW/glfw3.h"
 #include "engine/vulkan/Buffer.hpp"
 #include "engine/vulkan/DefaultVertex.hpp"
+#include "engine/vulkan/Descriptor.hpp"
 #include "engine/vulkan/DescriptorLayout.hpp"
+#include "engine/vulkan/Frame.hpp"
 #include "engine/vulkan/GraphicsQueue.hpp"
+#include "engine/vulkan/Image.hpp"
 #include "engine/vulkan/Instance.hpp"
 #include "engine/vulkan/Pipeline.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cassert>
 #include <cmath>
 #include <linux/limits.h>
+#include <memory>
 
 App* App::app = nullptr;
 
@@ -58,13 +62,28 @@ void App::initVulkan(){
 
 }
 bool App::run(){
+    Buffer bda;
+    {
+        DefaultVertex data[3];
+        bda.createAndUpload(window, data, 3*sizeof(DefaultVertex), vk::BufferUsageFlags::BitsType::eStorageBuffer | vk::BufferUsageFlags::BitsType::eShaderDeviceAddressKHR);
+    }
+
     Pipeline pipeline;
     DescriptorSetLayout dsl;
     Buffer buffer;
+    std::shared_ptr<Image> image = std::make_shared<Image>();
 
+    image->create(window, "assets/deleteme.png");    
+
+    DescriptorSet ds,ds2;
+    
     DefaultVertex data[3];
     buffer.createAndUpload(window, data, 3*sizeof(DefaultVertex), vk::BufferUsageFlags::BitsType::eVertexBuffer);
-    dsl.create(device, {});
+
+    dsl.create(device, {
+        DescriptorLayout(0,vk::ShaderStageFlagBits::eFragment,vk::DescriptorType::eCombinedImageSampler)
+    });
+    
     pipeline.create(
         window, device, 
         projectDir/"bin/shaders/shader.spv", 
@@ -72,7 +91,34 @@ bool App::run(){
         DefaultVertex::getBindingDescription(), DefaultVertex::getAttributeDescriptions(),
         dsl, Pipeline::noStencil, window.depthBuffer, false, {});
 
+    
+    ds.create(device, window, dsl, {
+        DescriptorLayout(0,vk::ShaderStageFlagBits::eFragment,vk::DescriptorType::eCombinedImageSampler)
+    });
+    ds.setResource(0, image);
+    
+    Frame frame;
+    frame.create(window, 720, 1280);
+    ds2.create(device, window, dsl, {
+        DescriptorLayout(0,vk::ShaderStageFlagBits::eFragment,vk::DescriptorType::eCombinedImageSampler)
+    });
+    ds2.setResource(0, frame.image);
+
     while(auto cb = window.update()){
+        {
+            CommandBuffer cb(window.commandPool);
+            cb.beginSingleTimeCommands();
+            frame.begin(cb);
+            
+            pipeline.bind(cb,vk::PipelineBindPoint::eGraphics);
+            buffer.bindAsVertexBuffers(cb, 0);
+            ds.bind(device, cb.commandBuffer, window, pipeline);
+            cb.draw(3, 1, 0, 0);
+
+            frame.end(cb);
+            cb.endSingleTimeCommands(window.commandPool);
+        }
+
         cb->commandBuffer.setViewport(0, vk::Viewport{
             .x = 0.0f,
             .y = 0.0f,
@@ -88,6 +134,7 @@ bool App::run(){
 
         pipeline.bind(*cb,vk::PipelineBindPoint::eGraphics);
         buffer.bindAsVertexBuffers(*cb, 0);
+        ds2.bind(device, cb->commandBuffer, window, pipeline);
         cb->draw(3, 1, 0, 0);
 
         glfwPollEvents();

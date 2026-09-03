@@ -63,7 +63,7 @@ void Window::create(Instance& instance,DeviceSetup& dSetup,int width, int height
 void Window::afterDeviceInit(class Device& device){
     commandPool.create(device, gQueue);
     swapchain.create(device,*this);
-    depthBuffer.create(*this, false);
+    depthBuffer.create(*this, false,swapchain.swapChainExtent);
 }
 
 void Window::close(){

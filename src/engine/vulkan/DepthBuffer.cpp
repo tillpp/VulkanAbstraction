@@ -33,17 +33,17 @@ vk::Format DepthBuffer::findDepthFormat(Device& device,bool withStencil) {
             withStencil
         );
 }
-void DepthBuffer::create(class Window& window,bool withStencil){
+void DepthBuffer::create(class Window& window,bool withStencil,vk::Extent2D extent){
     this->withStencil = withStencil;
     this->swapchain = &window.swapchain;
-    recreate(window);    
+    recreate(window,extent);    
 }
-void DepthBuffer::recreate(class Window& window){
+void DepthBuffer::recreate(class Window& window,vk::Extent2D extent){
     depthFormat = findDepthFormat(window.commandPool.getDevice(),withStencil);
     image.current = std::make_shared<Image::Reincarnation>();
     image.current->initImage(window.commandPool.getDevice(),
-        window.swapchain.swapChainExtent.width, 
-        window.swapchain.swapChainExtent.height, 
+        extent.width, 
+        extent.height, 
         depthFormat, 
         vk::SampleCountFlagBits::e1,
         vk::ImageTiling::eOptimal, 

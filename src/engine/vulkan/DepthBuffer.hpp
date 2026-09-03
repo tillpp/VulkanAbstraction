@@ -17,8 +17,8 @@ public:
     
     Image image;
 
-    void create(class Window& window,bool withStencil);
-    void recreate(class Window& window);
+    void create(class Window& window,bool withStencil,vk::Extent2D extent);
+    void recreate(class Window& window,vk::Extent2D extent);
     ~DepthBuffer();
 
     bool hasStencil()const;
