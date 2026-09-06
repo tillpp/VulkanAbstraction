@@ -4,6 +4,7 @@
 #include "engine/vulkan/Window.hpp"
 #include "engine/vulkan/Buffer.hpp"
 #include "vulkan/vulkan.hpp"
+#include <cassert>
 #include <iostream>
 #include <memory>
 
@@ -219,13 +220,15 @@ void Image::create(Window& window,std::filesystem::path path, vk::SamplerCreateI
     create(window,texWidth, texHeight,pixels,false,vk::Format::eR8G8B8A8Srgb,vk::SampleCountFlagBits::e1,vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, samplerInfo);
     stbi_image_free(pixels);
 }
-void Image::create(Window& window,int texWidth, int texHeight,stbi_uc* pixels,bool foreachFrame, vk::Format format, vk::SampleCountFlagBits samples,vk::ImageUsageFlags usage,vk::SamplerCreateInfo samplerInfo){
+void Image::create(Window& window,int texWidth, int texHeight,std::optional<stbi_uc*> pixels,bool foreachFrame, vk::Format format, vk::SampleCountFlagBits samples,vk::ImageUsageFlags usage,vk::SamplerCreateInfo samplerInfo){
+
     auto& device = window.commandPool.getDevice();
     vk::DeviceSize imageSize = texWidth * texHeight * 4;
     // load into stating Buffer
     Buffer stagingBuffer;
-    if(pixels)
+    if(pixels.has_value())
     {
+        assert(pixels.has_value());
         stagingBuffer.create(
             window,
             device,
@@ -236,7 +239,7 @@ void Image::create(Window& window,int texWidth, int texHeight,stbi_uc* pixels,bo
         
         void* data = stagingBuffer.bufferMemory.mapMemory(
             0, imageSize);
-        memcpy(data, pixels, imageSize);
+        memcpy(data, pixels.value(), imageSize);
         stagingBuffer.bufferMemory.unmapMemory();
     }
     
@@ -247,7 +250,7 @@ void Image::create(Window& window,int texWidth, int texHeight,stbi_uc* pixels,bo
     
         CommandBuffer commandBuffer(window.commandPool);
 
-        if(pixels){
+        if(pixels.has_value()){
             commandBuffer.beginSingleTimeCommands();
             current->transitionImageLayout(
                 commandBuffer, 

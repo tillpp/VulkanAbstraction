@@ -1,5 +1,6 @@
 #include "Frame.hpp"
 #include "vulkan/vulkan.hpp"
+#include <optional>
 
 void Frame::create(Window& window,int texWidth,int texHeight){
     this->window = &window;
@@ -8,7 +9,7 @@ void Frame::create(Window& window,int texWidth,int texHeight){
 
     depthBuffer.create(window, false, {this->texWidth,this->texHeight});
     image = std::make_shared<Image>();
-    image->create(window,texWidth,texHeight, nullptr, true, 
+    image->create(window,texWidth,texHeight, std::nullopt, true, 
         vk::Format::eB8G8R8A8Srgb, vk::SampleCountFlagBits::e1,
         vk::ImageUsageFlags::BitsType::eColorAttachment | vk::ImageUsageFlagBits::eSampled
         // ,vk::SamplerCreateInfo{

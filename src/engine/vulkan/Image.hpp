@@ -1,6 +1,7 @@
 #pragma once
 #include "engine/vulkan/common.hpp" // IWYU pragma: keep
 
+#include <optional>
 #include <stb_image.h>
 #include "engine/vulkan/Device.hpp"
 #include "engine/vulkan/CommandBuffer.hpp"
@@ -76,7 +77,7 @@ public:
         .minLod = 0,
         .maxLod = 0,
     });
-    void create(class Window& window,int texWidth, int texHeight,stbi_uc* pixels,bool foreachFrame, vk::Format, vk::SampleCountFlagBits samples,vk::ImageUsageFlags usage,vk::SamplerCreateInfo samplerInfo = {
+    void create(class Window& window,int texWidth, int texHeight,std::optional<stbi_uc*> pixels,bool foreachFrame, vk::Format, vk::SampleCountFlagBits samples,vk::ImageUsageFlags usage,vk::SamplerCreateInfo samplerInfo = {
         .magFilter = vk::Filter::eNearest, 
         .minFilter = vk::Filter::eNearest,  
         .mipmapMode = vk::SamplerMipmapMode::eNearest,
