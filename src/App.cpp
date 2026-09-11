@@ -12,6 +12,7 @@
 #include "vulkan/vulkan.hpp"
 #include <cassert>
 #include <cmath>
+#include <iostream>
 #include <linux/limits.h>
 #include <memory>
 
@@ -53,9 +54,16 @@ void App::initVulkan(){
     vk::PhysicalDeviceVulkan13Features b{.synchronization2 = true,.dynamicRendering = true}; // Enable dynamic rendering from Vulkan 1.3
     vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT c{.extendedDynamicState = true };  // Enable extended dynamic state from the extension
     vk::PhysicalDeviceVulkan11Features d{.shaderDrawParameters = true};
+    vk::PhysicalDeviceDescriptorIndexingFeatures e{
+        .shaderSampledImageArrayNonUniformIndexing = true,
+        .descriptorBindingPartiallyBound           = true,
+        .descriptorBindingVariableDescriptorCount  = true,
+        .runtimeDescriptorArray                    = true,
+    };
     a.pNext = &b;
     b.pNext = &c;
     c.pNext = &d;
+    d.pNext = &e;
 
     
     device.create(instance,df,&a,ds);
@@ -72,8 +80,10 @@ bool App::run(){
     DescriptorSetLayout dsl;
     Buffer buffer;
     std::shared_ptr<Image> image = std::make_shared<Image>();
+    std::shared_ptr<Image> image2 = std::make_shared<Image>();
 
-    image->create(window, "assets/deleteme.png");    
+    image ->create(window, "assets/deleteme.png");    
+    image2->create(window, "assets/deleteme2.png");    
 
     DescriptorSet ds,ds2;
     
@@ -81,7 +91,8 @@ bool App::run(){
     buffer.createAndUpload(window, data, 3*sizeof(DefaultVertex), vk::BufferUsageFlags::BitsType::eVertexBuffer);
 
     dsl.create(device, {
-        DescriptorLayout(0,vk::ShaderStageFlagBits::eFragment,vk::DescriptorType::eCombinedImageSampler)
+        DescriptorLayout(0,vk::ShaderStageFlagBits::eFragment,vk::DescriptorType::eCombinedImageSampler,2),
+        DescriptorLayout(1,vk::ShaderStageFlagBits::eFragment,vk::DescriptorType::eCombinedImageSampler,20,true),
     });
     
     pipeline.create(
@@ -93,16 +104,24 @@ bool App::run(){
 
     
     ds.create(device, window, dsl, {
-        DescriptorLayout(0,vk::ShaderStageFlagBits::eFragment,vk::DescriptorType::eCombinedImageSampler)
+        DescriptorLayout(0,vk::ShaderStageFlagBits::eFragment,vk::DescriptorType::eCombinedImageSampler,2),
+        DescriptorLayout(1,vk::ShaderStageFlagBits::eFragment,vk::DescriptorType::eCombinedImageSampler,2,true),
     });
-    ds.setResource(0, image);
+    ds.setResource(image ,0,0);
+    ds.setResource(image2,0,1);
+    // ds.setResource(image ,1,0);
+    ds.setResource(image2,1,1);
     
     Frame frame;
     frame.create(window, 720, 1280);
     ds2.create(device, window, dsl, {
-        DescriptorLayout(0,vk::ShaderStageFlagBits::eFragment,vk::DescriptorType::eCombinedImageSampler)
+        DescriptorLayout(0,vk::ShaderStageFlagBits::eFragment,vk::DescriptorType::eCombinedImageSampler,2),
+        DescriptorLayout(1,vk::ShaderStageFlagBits::eFragment,vk::DescriptorType::eCombinedImageSampler,2,true),
     });
-    ds2.setResource(0, frame.image);
+    ds2.setResource(frame.image,0,0);
+    ds2.setResource(frame.image,0,1);
+    ds2.setResource(frame.image,1,0);
+    ds2.setResource(frame.image,1,1);
 
     while(auto cb = window.update()){
         {

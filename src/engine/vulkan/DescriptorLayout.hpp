@@ -6,12 +6,15 @@ struct DescriptorLayout{
     uint32_t             binding;
     vk::ShaderStageFlags stageFlags;
     vk::DescriptorType   descriptorType;
+    uint32_t             descriptorCount;
+    bool                 variableCount;
 
-    
     DescriptorLayout(
         uint32_t             binding,
         vk::ShaderStageFlags stageFlags,
-        vk::DescriptorType   descriptorType
+        vk::DescriptorType   descriptorType,
+        uint32_t             descriptorCount,
+        bool                 variableCount = false
     );
     
     vk::DescriptorSetLayoutBinding getBinding()const;

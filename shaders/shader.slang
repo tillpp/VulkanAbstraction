@@ -13,7 +13,10 @@ struct VertexOutput {
     float2 uv       : UV;
 };
 
-Sampler2D texture;
+[[vk::binding(0, 0)]]
+Sampler2D texture[];
+[[vk::binding(1,0)]]
+Sampler2D texture2[];
 
 [shader("vertex")]
 VertexOutput vertMain(uint vertexID: SV_VertexID) {
@@ -25,5 +28,6 @@ VertexOutput vertMain(uint vertexID: SV_VertexID) {
 
 [shader("fragment")]
 float4 fragMain(float2 uv: UV) : SV_Target {
-    return texture.Sample(uv)+float4(1,1,1,1)*0.1;
+    int index = uv.x > 0.5;
+    return texture2[NonUniformResourceIndex(index)].Sample(uv)+float4(1,1,1,1)*0.1;
 }

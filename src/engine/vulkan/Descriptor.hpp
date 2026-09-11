@@ -36,8 +36,10 @@ class DescriptorSet{
         std::vector<Frame> frames;
 
         Binding(const DescriptorLayout& dsLayout);
+
+        DescriptorInfo descriptorInfo;
     };
-    std::vector<Binding> bindings;
+    std::vector<std::vector<Binding>> bindings;
     std::map<size_t, size_t> mappingID2Index;
 
     class Swapchain* swapchain = nullptr;
@@ -49,7 +51,7 @@ public:
     void create(Device& device,class Window& window,DescriptorSetLayout& dsl,std::vector<DescriptorLayout> dsArray);
     void bind(Device& device,vk::raii::CommandBuffer& commandBuffer,Window& window, class Pipeline& pipeline,uint32_t firstSet = 0);
 
-    void setResource(size_t binding,std::shared_ptr<Resource> resource);
+    void setResource(std::shared_ptr<Resource> resource,size_t binding,size_t arrayIndex = 0);
 
     ~DescriptorSet();
 };
