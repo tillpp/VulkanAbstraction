@@ -4,7 +4,6 @@
 #include "vulkan/vulkan.hpp"
 #include <cassert>
 #include <optional>
-#include <utility>
 #include <vector>
 
 void Frame::create(Window& window,int texWidth,int texHeight){
@@ -20,7 +19,8 @@ void Frame::create(Window& window,int texWidth,int texHeight){
         buffers.emplace_back(window.commandPool,vk::CommandBufferLevel::eSecondary);    
 
     depthBuffer.create(window, false, {this->texWidth,this->texHeight});
-    image = std::make_shared<Image>();
+    if(!image)
+        image = std::make_shared<Image>();
     image->create(window,texWidth,texHeight, std::nullopt, true, 
         vk::Format::eB8G8R8A8Srgb, vk::SampleCountFlagBits::e1,
         vk::ImageUsageFlags::BitsType::eColorAttachment | vk::ImageUsageFlagBits::eSampled

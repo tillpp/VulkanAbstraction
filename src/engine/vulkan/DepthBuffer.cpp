@@ -40,6 +40,8 @@ void DepthBuffer::create(class Window& window,bool withStencil,vk::Extent2D exte
 }
 void DepthBuffer::recreate(class Window& window,vk::Extent2D extent){
     depthFormat = findDepthFormat(window.commandPool.getDevice(),withStencil);
+    if(image.current)
+        swapchain->trashCan.trash(image.getCurrent());
     image.current = std::make_shared<Image::Reincarnation>();
     image.current->initImage(window.commandPool.getDevice(),
         extent.width, 

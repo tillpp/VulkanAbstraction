@@ -1,6 +1,5 @@
 #pragma once
 #include "engine/vulkan/Device.hpp"
-#include "engine/vulkan/GraphicsQueue.hpp"
 #include "engine/vulkan/Instance.hpp"
 #include "engine/vulkan/Window.hpp"
 #include <filesystem>

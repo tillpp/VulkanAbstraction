@@ -23,6 +23,7 @@ public:
 
 struct ResourceReincarnation{
     virtual DescriptorInfo getDescriptorInfo()const = 0;
+    virtual ~ResourceReincarnation()=default;
 };
 struct ResourceUpdate{
     uint32_t binding;

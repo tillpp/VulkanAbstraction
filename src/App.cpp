@@ -4,22 +4,23 @@
 #include "engine/vulkan/DefaultVertex.hpp"
 #include "engine/vulkan/Descriptor.hpp"
 #include "engine/vulkan/DescriptorLayout.hpp"
+#include "engine/vulkan/Event.hpp"
 #include "engine/vulkan/Frame.hpp"
-#include "engine/vulkan/GraphicsQueue.hpp"
 #include "engine/vulkan/Image.hpp"
 #include "engine/vulkan/Instance.hpp"
 #include "engine/vulkan/Pipeline.hpp"
 #include "engine/vulkan/UBO.hpp"
-#include "glm/ext/vector_float3.hpp"
 #include "glm/ext/vector_float4.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cassert>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
+#include <functional>
 #include <iostream>
 #include <linux/limits.h>
 #include <memory>
+#include <variant>
 
 App* App::app = nullptr;
 
@@ -133,10 +134,8 @@ bool App::run(){
     ds.setResource(image ,1,0);
     ds.setResource(image2,1,1);
 
-    
-    
     Frame frame;
-    frame.create(window, 720, 1280);
+    frame.create(window, 10, 10);
     ds2.create(device, window, dsl, {
         DescriptorLayout(0,vk::ShaderStageFlagBits::eFragment,vk::DescriptorType::eCombinedImageSampler,2),
         DescriptorLayout(1,vk::ShaderStageFlagBits::eFragment,vk::DescriptorType::eCombinedImageSampler,2,true),
@@ -161,11 +160,24 @@ bool App::run(){
             }
         }
     };
-
     FPS fps;
+    struct AppInputHandler:InputHandler{
+        std::function<bool(const Event& event)> fun;
+        AppInputHandler(std::function<bool(const Event& event)> fun):fun(fun){}
+        virtual bool receive(const Event& event){
+            return fun(event);
+        }
+    };
+    window.inputHandler = std::make_shared<AppInputHandler>([&](const Event& event){
+        if(auto e =std::get_if<Event::FramebufferSize>(&event.value)){
+            frame.create(window, e->width, e->height);
+        }
+        return true;
+    });
 
     while(auto cb = window.update()){
         fps.update();
+
         {
             auto cb2 = frame.begin();
             
@@ -180,8 +192,10 @@ bool App::run(){
         }
         
         if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){
-            image2->create(window, "assets/deleteme.png");    
-            image ->create(window, "assets/deleteme2.png");    
+            // image2->create(window, "assets/deleteme.png");    
+            // image ->create(window, "assets/deleteme2.png"); 
+            
+            frame.create(window, 1280, 720);            
         }
 
         window.beginRendering(cb);

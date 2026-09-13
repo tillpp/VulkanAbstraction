@@ -221,6 +221,14 @@ void Image::create(Window& window,std::filesystem::path path, vk::SamplerCreateI
     stbi_image_free(pixels);
 }
 void Image::create(Window& window,int texWidth, int texHeight,std::optional<stbi_uc*> pixels,bool foreachFrame, vk::Format format, vk::SampleCountFlagBits samples,vk::ImageUsageFlags usage,vk::SamplerCreateInfo samplerInfo){
+    if(frames.size()){
+        for(auto& f:frames)
+            window.swapchain.trashCan.trash(f);
+        frames.clear();
+    }else{
+        if(current)
+            window.swapchain.trashCan.trash(current);
+    }
 
     auto& device = window.commandPool.getDevice();
     vk::DeviceSize imageSize = texWidth * texHeight * 4;
