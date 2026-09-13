@@ -36,12 +36,12 @@ struct ResourceUpdate{
 };
 struct Resource{
     virtual std::shared_ptr<ResourceReincarnation> getResource(size_t frameIndex)const = 0;
-
-    void registerDescriptorSet(class DescriptorSet* descriptorSet, uint32_t binding, uint32_t arrayIndex);
+protected:
     void notifyDescriptorSet();
 private:
     std::map<class DescriptorSet*, std::set<ResourceUpdate>> descriptorSets;
     friend class DescriptorSet;
+    void registerDescriptorSet(class DescriptorSet* descriptorSet, uint32_t binding, uint32_t arrayIndex);
     void deregisterDescriptorSet(class DescriptorSet* descriptorSet,uint32_t binding, uint32_t arrayIndex);
     void deregisterDescriptorSetEverything(class DescriptorSet* descriptorSet);
 };

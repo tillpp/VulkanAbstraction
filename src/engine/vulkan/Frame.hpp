@@ -5,10 +5,13 @@
 #include "engine/vulkan/Image.hpp"
 #include "engine/vulkan/Window.hpp"
 #include <cstdint>
+#include <utility>
+#include <vector>
 
 class Frame{
     class Window* window;
     uint32_t texWidth, texHeight;
+    std::vector<CommandBuffer> buffers;
 public:
     std::shared_ptr<Image> image;
     DepthBuffer depthBuffer;
@@ -23,6 +26,8 @@ public:
         frame.end(cb);
         cb.endSingleTimeCommands(window.commandPool);
     */
-    void begin(CommandBuffer& cb);
-    void end(CommandBuffer& cb);
+    CommandBuffer* begin();
+    void end();
+
+    virtual ~Frame();
 };

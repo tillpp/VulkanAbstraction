@@ -2,6 +2,7 @@
 #include "Swapchain.hpp"
 
 void TrashCan::TrashLayer::clear(){
+    commandBuffers.clear();
     pipelineLayouts.clear();
     pipelines.clear();
     descriptorSets.clear();
@@ -44,6 +45,10 @@ void TrashCan::trash(vk::raii::DescriptorPool descriptorPool){
 }
 void TrashCan::trash(vk::raii::DescriptorSet descriptorSet){
     trashLayer[getFrameIndex()].descriptorSets.push_back(std::move(descriptorSet));
+}
+
+void TrashCan::trash(class CommandBuffer& cb){
+    trashLayer[getFrameIndex()].commandBuffers.push_back(std::move(cb.commandBuffer));
 }
 void TrashCan::trash(std::shared_ptr<class ResourceReincarnation> reincarnation){
     trashLayer[getFrameIndex()].reincarnations.push_back(reincarnation);

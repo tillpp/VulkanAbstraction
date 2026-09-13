@@ -162,7 +162,6 @@ CommandBuffer* Window::update(){
         return nullptr;
 
     if(currentCB){
-        swapchain.images[swapchain.imageIndex].endRendering(*currentCB);
         currentCB->end();
         swapchain.end();
     }
@@ -171,6 +170,11 @@ CommandBuffer* Window::update(){
     while(!swapchain.begin());
     currentCB = &swapchain.getCommandBuffer();
     currentCB->begin();
-    swapchain.images[swapchain.imageIndex].beginRendering(*currentCB,&depthBuffer);
     return currentCB;
+}
+void Window::beginRendering(CommandBuffer* cb){
+    swapchain.images[swapchain.imageIndex].beginRendering(*currentCB,&depthBuffer);
+}
+void   Window::endRendering(CommandBuffer* cb){
+    swapchain.images[swapchain.imageIndex].endRendering(*currentCB);
 }

@@ -1,11 +1,23 @@
 #include "Frame.hpp"
+#include "engine/vulkan/CommandBuffer.hpp"
+#include "engine/vulkan/common.hpp"
 #include "vulkan/vulkan.hpp"
+#include <cassert>
 #include <optional>
+#include <utility>
+#include <vector>
 
 void Frame::create(Window& window,int texWidth,int texHeight){
     this->window = &window;
     this->texWidth = texWidth;
     this->texHeight = texHeight;
+
+    for(auto& cb:buffers){
+        window.swapchain.trashCan.trash(cb);
+    }
+    buffers.clear();
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+        buffers.emplace_back(window.commandPool,vk::CommandBufferLevel::eSecondary);    
 
     depthBuffer.create(window, false, {this->texWidth,this->texHeight});
     image = std::make_shared<Image>();
@@ -57,7 +69,11 @@ void Frame::create(Window& window,int texWidth,int texHeight){
     }
     cb.endSingleTimeCommands(window.commandPool);
 }
-void Frame::begin(CommandBuffer& cb){
+CommandBuffer* Frame::begin(){
+    auto& cb = buffers[window->swapchain.getFrameIndex()];
+    cb.commandBuffer.reset();
+    cb.begin();
+
     auto current = std::dynamic_pointer_cast<Image::Reincarnation>(image->getResource(window->swapchain.getFrameIndex()));
     current->transitionImageLayout(
         cb, 
@@ -82,8 +98,10 @@ void Frame::begin(CommandBuffer& cb){
         .offset = {0,0},
         .extent = {texWidth,texHeight},
     });
+    return &cb;
 }
-void Frame::end(CommandBuffer& cb){
+void Frame::end(){
+    auto& cb = buffers[window->swapchain.getFrameIndex()];
     auto current = std::dynamic_pointer_cast<Image::Reincarnation>(image->getResource(window->swapchain.getFrameIndex()));
     cb.commandBuffer.endRendering();
     current->transitionImageLayout(
@@ -96,4 +114,13 @@ void Frame::end(CommandBuffer& cb){
         vk::PipelineStageFlagBits2::eBottomOfPipe,               // dstStage
         vk::ImageAspectFlagBits::eColor
     );
+    cb.end();
+
+}
+Frame::~Frame(){
+    if(window){
+        for(auto& cb:buffers){
+            window->swapchain.trashCan.trash(cb);
+        }
+    }
 }

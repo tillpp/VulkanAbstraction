@@ -38,6 +38,8 @@ public:
 
     CommandBuffer* update();
     CommandBuffer* currentCB = nullptr;
+    void beginRendering(CommandBuffer*);
+    void   endRendering(CommandBuffer*);
 
 
     std::shared_ptr<InputHandler> inputHandler;

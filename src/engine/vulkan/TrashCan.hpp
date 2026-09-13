@@ -1,5 +1,6 @@
 #pragma once
 #include "common.hpp"
+#include "vulkan/vulkan_raii.hpp"
 #include <cstdint>
 
 class TrashCan{
@@ -12,6 +13,7 @@ public:
         std::vector<vk::raii::PipelineLayout> pipelineLayouts;        
         std::vector<vk::raii::DescriptorSet> descriptorSets;
         std::vector<vk::raii::DescriptorPool> descriptorPools;
+        std::vector<vk::raii::CommandBuffer> commandBuffers;
         std::vector<std::shared_ptr<class ResourceReincarnation>> reincarnations;
         
         void clear();
@@ -27,6 +29,7 @@ public:
     void trash(vk::raii::PipelineLayout pipelineLayout,vk::raii::Pipeline pipeline);
     void trash(vk::raii::DescriptorPool descriptorPool);
     void trash(vk::raii::DescriptorSet descriptorSet);
+    void trash(class CommandBuffer& commandBuffer);
     void trash(std::shared_ptr<class ResourceReincarnation> reincarnation);
 private:
     TrashLayer trashLayer[MAX_FRAMES_IN_FLIGHT];

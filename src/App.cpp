@@ -11,7 +11,9 @@
 #include "engine/vulkan/Pipeline.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cassert>
+#include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <iostream>
 #include <linux/limits.h>
 #include <memory>
@@ -127,26 +129,42 @@ bool App::run(){
 
 
 
+    struct FPS{
+        std::chrono::steady_clock::time_point t = std::chrono::steady_clock::now();
+        size_t frames = 0;
+        void update(){
+            frames++;
+            auto now = std::chrono::steady_clock::now();
+            if(std::chrono::duration_cast<std::chrono::milliseconds>(now-t).count()>1000){
+                t = now;
+                std::cout <<"[FPS] "<< frames << std::endl;
+                frames = 0;
+            }
+        }
+    };
+
+    FPS fps;
 
     while(auto cb = window.update()){
+        fps.update();
         {
-            CommandBuffer cb(window.commandPool);
-            cb.beginSingleTimeCommands();
-            frame.begin(cb);
+            auto cb2 = frame.begin();
             
-            pipeline.bind(cb,vk::PipelineBindPoint::eGraphics);
-            buffer.bindAsVertexBuffers(cb, 0);
-            ds.bind(device, cb.commandBuffer, window, pipeline,0);
-            cb.draw(3, 1, 0, 0);
+            pipeline.bind(*cb2,vk::PipelineBindPoint::eGraphics);
+            buffer.bindAsVertexBuffers(*cb2, 0);
+            ds.bind(device, cb2->commandBuffer, window, pipeline,0);
+            cb2->draw(3, 1, 0, 0);
 
-            frame.end(cb);
-            cb.endSingleTimeCommands(window.commandPool);
+            frame.end();
+            cb->execute(*cb2);
         }
+        
         if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){
             image2->create(window, "assets/deleteme.png");    
             image ->create(window, "assets/deleteme2.png");    
         }
 
+        window.beginRendering(cb);
         cb->commandBuffer.setViewport(0, vk::Viewport{
             .x = 0.0f,
             .y = 0.0f,
@@ -164,6 +182,7 @@ bool App::run(){
         buffer.bindAsVertexBuffers(*cb, 0);
         ds2.bind(device, cb->commandBuffer, window, pipeline,0);
         cb->draw(3, 1, 0, 0);
+        window.endRendering(cb);
 
         glfwPollEvents();
     }
