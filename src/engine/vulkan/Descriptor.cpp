@@ -2,11 +2,13 @@
 #include "engine/vulkan/Swapchain.hpp"
 #include "engine/vulkan/Pipeline.hpp"
 #include "engine/vulkan/Window.hpp"
+#include "engine/vulkan/common.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <set>
 #include <vector>
 
 DescriptorSet::Binding::Binding(const DescriptorLayout& dsLayout):DescriptorLayout(dsLayout){
@@ -18,6 +20,7 @@ DescriptorSet::Binding::Binding(const DescriptorLayout& dsLayout):DescriptorLayo
 //TODO: assert that dsArray[_].descriptorCount is equal dsl...descriptorCounts. Exception variableDescriptorCount, where i can also be smaller. 
 void DescriptorSet::create(Device& device,Window& window,DescriptorSetLayout& dsl,std::vector<DescriptorLayout> dsArray){
     this->swapchain = &window.swapchain;
+    updates = std::vector<std::set<ResourceUpdate>>(MAX_FRAMES_IN_FLIGHT,std::set<ResourceUpdate>());
     //pool creation
     {
         std::map<vk::DescriptorType,uint32_t> poolsizes;
@@ -87,69 +90,108 @@ void DescriptorSet::create(Device& device,Window& window,DescriptorSetLayout& ds
     }
 }
 void DescriptorSet::bind(Device& device,vk::raii::CommandBuffer& commandBuffer,Window& window, Pipeline& pipeline,uint32_t firstSet ){
+    auto fi = window.swapchain.getFrameIndex();
+    update(device, window);
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline.pipelineLayout, firstSet, *descriptorSets[fi], nullptr);
+}
+void DescriptorSet::update(Device& device,Window& window){
     //Updating reincarnations:
-
     auto fi = window.swapchain.getFrameIndex();
 
     std::vector<vk::WriteDescriptorSet>    descriptorWrites;
     std::vector<vk::DescriptorImageInfo*>  imageInfos;
     std::vector<vk::DescriptorBufferInfo*> bufferInfos;
 
-    for(int bindIndex = 0;bindIndex < bindings.size(); bindIndex++){
-        auto& bind          = bindings[bindIndex];
-        for (uint32_t i = 0; i < bind.size() ; i++) {
-            auto& element = bind[i];
-            auto& reincarnation = element.frames[fi].reincarnation;
-            auto& resource      = element.resource;
+    for(auto& update:updates[fi]){
+        auto& element = bindings[update.binding][update.arrayIndex];
+        auto& reincarnation = element.frames[fi].reincarnation;
+        auto& resource      = element.resource;
 
-            if(element.variableCount){
-                if(!resource) continue;
-            }
-            else assert(resource);
+        if(element.variableCount){
+            if(!resource) continue;
+        }
+        else assert(resource);
 
-            // missmatch?
-            if(reincarnation != resource->getResource(fi)){
-                reincarnation = resource->getResource(fi);
-                vk::WriteDescriptorSet wds{ 
-                    .dstSet          = descriptorSets[fi], 
-                    .dstBinding      = element.binding, 
-                    .dstArrayElement = i, 
-                    .descriptorCount = 1,
-                    .descriptorType  = element.descriptorType
+        // missmatch?
+        if(reincarnation != resource->getResource(fi)){
+            reincarnation = resource->getResource(fi);
+            vk::WriteDescriptorSet wds{ 
+                .dstSet          = descriptorSets[fi], 
+                .dstBinding      = element.binding, 
+                .dstArrayElement = update.arrayIndex, 
+                .descriptorCount = 1,
+                .descriptorType  = element.descriptorType
+            };
+            auto& descriptorInfo = element.descriptorInfo;
+            descriptorInfo = reincarnation->getDescriptorInfo();
+
+            if(descriptorInfo.type == DescriptorInfo::BUFFER){
+                auto dbi = new vk::DescriptorBufferInfo[1]{
+                    descriptorInfo.bufferInfo
                 };
-                auto& descriptorInfo = element.descriptorInfo;
-                descriptorInfo = reincarnation->getDescriptorInfo();
-
-                if(descriptorInfo.type == DescriptorInfo::BUFFER){
-                    auto dbi = new vk::DescriptorBufferInfo[1]{
-                        descriptorInfo.bufferInfo
-                    };
-                    wds.pBufferInfo = dbi;
-                    bufferInfos.push_back(dbi);
-                }else if(descriptorInfo.type == DescriptorInfo::IMAGE){
-                    auto dii = new vk::DescriptorImageInfo[1]{
-                        descriptorInfo.imageInfo
-                    };
-                    wds.pImageInfo = dii;
-                    imageInfos.push_back(dii);
-                }
-                descriptorWrites.push_back(wds);
+                wds.pBufferInfo = dbi;
+                bufferInfos.push_back(dbi);
+            }else if(descriptorInfo.type == DescriptorInfo::IMAGE){
+                auto dii = new vk::DescriptorImageInfo[1]{
+                    descriptorInfo.imageInfo
+                };
+                wds.pImageInfo = dii;
+                imageInfos.push_back(dii);
             }
+            descriptorWrites.push_back(wds);
         }
     }
     if(descriptorWrites.size())
         device.device.updateDescriptorSets(descriptorWrites, {});
+    
     for(auto x:imageInfos)
         delete[] x;
     for(auto x:bufferInfos)
         delete[] x;
+    updates[fi].clear();
+}
 
-    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline.pipelineLayout, firstSet, *descriptorSets[fi], nullptr);
-}
+
 void DescriptorSet::setResource(std::shared_ptr<Resource> resource,size_t binding,size_t arrayIndex){
+    auto old = bindings[mappingID2Index[binding]][arrayIndex].resource;
     bindings[mappingID2Index[binding]][arrayIndex].resource = resource;
+    for (int frameIndex = 0; frameIndex< MAX_FRAMES_IN_FLIGHT; frameIndex++) {
+        requestReincarnationUpdate(frameIndex, binding, arrayIndex);
+    }
+    if(old)
+        old->deregisterDescriptorSet(this, binding, arrayIndex);
+    resource->registerDescriptorSet(this, binding, arrayIndex);
 }
+void Resource::registerDescriptorSet(class DescriptorSet* descriptorSet, uint32_t binding, uint32_t arrayIndex){
+    descriptorSets[descriptorSet].insert({binding,arrayIndex});
+}
+void Resource::deregisterDescriptorSet(class DescriptorSet* descriptorSet,uint32_t binding, uint32_t arrayIndex){
+    descriptorSets[descriptorSet].erase({binding,arrayIndex});
+    if(descriptorSets[descriptorSet].empty())
+        descriptorSets.erase(descriptorSet);
+}
+void Resource::deregisterDescriptorSetEverything(class DescriptorSet* descriptorSet){
+    descriptorSets.erase(descriptorSet);
+}
+void Resource::notifyDescriptorSet(){
+    for (auto& pair: descriptorSets) {
+        auto ds = pair.first;
+        auto updates = pair.second;
+        for (auto& update : updates) {
+            for (int frameIndex = 0; frameIndex< MAX_FRAMES_IN_FLIGHT; frameIndex++) {
+                ds->requestReincarnationUpdate(frameIndex, update.binding, update.arrayIndex);
+            }
+        }
+    }
+}
+
 DescriptorSet::~DescriptorSet(){
+    for(auto& bind:bindings){
+        for(auto& element:bind){
+            if(element.resource)
+                element.resource->deregisterDescriptorSetEverything(this);
+        }
+    }
     if(swapchain){
         auto& trashCan = swapchain->trashCan;
         for(auto& array:bindings){
@@ -164,4 +206,7 @@ DescriptorSet::~DescriptorSet(){
             trashCan.trash(std::move(ds));
         }
     }
+}
+void DescriptorSet::requestReincarnationUpdate(size_t frameIndex, uint32_t binding, uint32_t arrayIndex){
+    updates[frameIndex].insert(ResourceUpdate{binding,arrayIndex});
 }

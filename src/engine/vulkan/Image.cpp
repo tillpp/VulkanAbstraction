@@ -294,8 +294,8 @@ void Image::create(Window& window,int texWidth, int texHeight,std::optional<stbi
     }else{
         current = std::make_shared<Reincarnation>();
         fun(current);
-
     }
+    notifyDescriptorSet();
 }
 std::shared_ptr<ResourceReincarnation> Image::getResource(size_t frameIndex)const{
     if(frames.size()){

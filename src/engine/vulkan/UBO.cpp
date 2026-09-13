@@ -23,6 +23,7 @@ void UBO::create(Window& window,Device& device,vk::DeviceSize bufferSize){
         reincarnation->buffersMapped = std::move(reincarnation->buffer.bufferMemory.mapMemory(0, bufferSize));
         reincarnation->size          = bufferSize;
     }
+    notifyDescriptorSet();
 }
 std::shared_ptr<ResourceReincarnation> UBO::getResource(size_t frameIndex)const{
     return frames[frameIndex];

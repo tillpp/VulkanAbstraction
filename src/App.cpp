@@ -109,8 +109,10 @@ bool App::run(){
     });
     ds.setResource(image ,0,0);
     ds.setResource(image2,0,1);
-    // ds.setResource(image ,1,0);
+    ds.setResource(image ,1,0);
     ds.setResource(image2,1,1);
+
+    
     
     Frame frame;
     frame.create(window, 720, 1280);
@@ -123,6 +125,9 @@ bool App::run(){
     ds2.setResource(frame.image,1,0);
     ds2.setResource(frame.image,1,1);
 
+
+
+
     while(auto cb = window.update()){
         {
             CommandBuffer cb(window.commandPool);
@@ -131,11 +136,15 @@ bool App::run(){
             
             pipeline.bind(cb,vk::PipelineBindPoint::eGraphics);
             buffer.bindAsVertexBuffers(cb, 0);
-            ds.bind(device, cb.commandBuffer, window, pipeline);
+            ds.bind(device, cb.commandBuffer, window, pipeline,0);
             cb.draw(3, 1, 0, 0);
 
             frame.end(cb);
             cb.endSingleTimeCommands(window.commandPool);
+        }
+        if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){
+            image2->create(window, "assets/deleteme.png");    
+            image ->create(window, "assets/deleteme2.png");    
         }
 
         cb->commandBuffer.setViewport(0, vk::Viewport{
@@ -153,7 +162,7 @@ bool App::run(){
 
         pipeline.bind(*cb,vk::PipelineBindPoint::eGraphics);
         buffer.bindAsVertexBuffers(*cb, 0);
-        ds2.bind(device, cb->commandBuffer, window, pipeline);
+        ds2.bind(device, cb->commandBuffer, window, pipeline,0);
         cb->draw(3, 1, 0, 0);
 
         glfwPollEvents();
