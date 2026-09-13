@@ -11,10 +11,7 @@ Window::Window(){
     }
     glfwCount++;
 }
-Window::~Window(){
-    swapchain.clear();
-    commandPool.clear();
-    
+Window::~Window(){    
     close();
     glfwCount--;
     if(glfwCount == 0){
@@ -67,6 +64,9 @@ void Window::afterDeviceInit(class Device& device){
 }
 
 void Window::close(){
+    swapchain.clear();
+    commandPool.clear();
+
     glfwDestroyWindow(window);
     window = nullptr;
 }

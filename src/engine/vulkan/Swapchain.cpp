@@ -148,6 +148,8 @@ void Swapchain::clear(){
     inFlightFences.clear();
     frameIndex = 0;
     device = nullptr;
+    swapChain = nullptr;
+
 }
 
 bool Swapchain::begin(){

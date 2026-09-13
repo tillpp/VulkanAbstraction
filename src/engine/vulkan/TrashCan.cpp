@@ -3,8 +3,8 @@
 
 void TrashCan::TrashLayer::clear(){
     commandBuffers.clear();
-    pipelineLayouts.clear();
     pipelines.clear();
+    pipelineLayouts.clear();
     descriptorSets.clear();
     descriptorPools.clear();
     buffers.clear();
