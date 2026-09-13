@@ -1,5 +1,6 @@
 #include "Device.hpp"
 #include "Queue.hpp"
+#include <vector>
 
 void Device::create(Instance& instance,PhyDeviceFeatures& phyFeatures,void* logFeatures,DeviceSetup settings){
     this->phyFeatures = &phyFeatures;
@@ -130,19 +131,21 @@ void Device::initLogicalDevice(){
 
     // turn Queues into vk::DeviceQueueCreateInfo  
     std::vector<vk::DeviceQueueCreateInfo> deviceQueueCreateInfos;
+
+    std::vector<float> priorities;
+    for(auto&& pair: buckets){
+        std::ranges::transform(pair.second,std::back_inserter(priorities), &Queue::priority);
+    }
+    size_t indexInPriorities = 0;
     for(auto&& pair: buckets){
         auto familyIndex = pair.first;
-        std::vector<float> priorities;
-        {
-            priorities.reserve(pair.second.size());
-            std::ranges::transform(pair.second,std::back_inserter(priorities), &Queue::priority);
-        }
-            
+        auto size = pair.second.size();
         deviceQueueCreateInfos.push_back(vk::DeviceQueueCreateInfo{ 
             .queueFamilyIndex = familyIndex,
-            .queueCount = (unsigned int)priorities.size(),
-            .pQueuePriorities = priorities.data()
+            .queueCount = (unsigned int)size,
+            .pQueuePriorities = priorities.data()+indexInPriorities
         });
+        indexInPriorities += size;
     }
 
     // create the device and all the queues.
