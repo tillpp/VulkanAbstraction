@@ -29,7 +29,7 @@ public:
         std::string entryFnFragment,
         vk::VertexInputBindingDescription bindingDescription,
         std::vector<vk::VertexInputAttributeDescription> attributeDescriptions,
-        class DescriptorSetLayout& dsLayout,
+        std::vector<class DescriptorSetLayout*> dsLayouts,
         Stencil stencil,
         DepthBuffer& depthBuffer, bool depthTesting,
         std::optional<class PushConstant*> pushConstant);

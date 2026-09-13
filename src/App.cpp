@@ -9,6 +9,9 @@
 #include "engine/vulkan/Image.hpp"
 #include "engine/vulkan/Instance.hpp"
 #include "engine/vulkan/Pipeline.hpp"
+#include "engine/vulkan/UBO.hpp"
+#include "glm/ext/vector_float3.hpp"
+#include "glm/ext/vector_float4.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cassert>
 #include <chrono>
@@ -78,6 +81,22 @@ bool App::run(){
         bda.createAndUpload(window, data, 3*sizeof(DefaultVertex), vk::BufferUsageFlags::BitsType::eStorageBuffer | vk::BufferUsageFlags::BitsType::eShaderDeviceAddressKHR);
     }
 
+    auto ubo = std::make_shared<UBO>();
+    ubo->create(window, device, sizeof(glm::vec4));
+    *(glm::vec4*)ubo->frames[0]->buffersMapped = glm::vec4(1,0,0,1);
+    *(glm::vec4*)ubo->frames[1]->buffersMapped = glm::vec4(1,0,0,1);
+    DescriptorSetLayout dsl_ubo;
+    dsl_ubo.create(device, {
+        DescriptorLayout(0,vk::ShaderStageFlagBits::eFragment,vk::DescriptorType::eUniformBuffer,1,true),
+        // DescriptorLayout(0,vk::ShaderStageFlagBits::eFragment,vk::DescriptorType::eUniformBuffer,1),
+    });
+    DescriptorSet ds_ubo;
+    ds_ubo.create(device, window, dsl_ubo, {
+        DescriptorLayout(0,vk::ShaderStageFlagBits::eFragment,vk::DescriptorType::eUniformBuffer,1,true),
+        // DescriptorLayout(0,vk::ShaderStageFlagBits::eFragment,vk::DescriptorType::eUniformBuffer,1),
+    });
+    ds_ubo.setResource(ubo, 0);
+    
     Pipeline pipeline;
     DescriptorSetLayout dsl;
     Buffer buffer;
@@ -102,7 +121,7 @@ bool App::run(){
         projectDir/"bin/shaders/shader.spv", 
         "vertMain", "fragMain", 
         DefaultVertex::getBindingDescription(), DefaultVertex::getAttributeDescriptions(),
-        dsl, Pipeline::noStencil, window.depthBuffer, false, {});
+        {&dsl,&dsl_ubo}, Pipeline::noStencil, window.depthBuffer, false, {});
 
     
     ds.create(device, window, dsl, {
@@ -153,6 +172,7 @@ bool App::run(){
             pipeline.bind(*cb2,vk::PipelineBindPoint::eGraphics);
             buffer.bindAsVertexBuffers(*cb2, 0);
             ds.bind(device, cb2->commandBuffer, window, pipeline,0);
+            ds_ubo.bind(device, cb2->commandBuffer, window, pipeline,1);
             cb2->draw(3, 1, 0, 0);
 
             frame.end();
@@ -181,6 +201,7 @@ bool App::run(){
         pipeline.bind(*cb,vk::PipelineBindPoint::eGraphics);
         buffer.bindAsVertexBuffers(*cb, 0);
         ds2.bind(device, cb->commandBuffer, window, pipeline,0);
+        ds_ubo.bind(device, cb->commandBuffer, window, pipeline,1);
         cb->draw(3, 1, 0, 0);
         window.endRendering(cb);
 

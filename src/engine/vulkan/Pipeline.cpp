@@ -6,7 +6,9 @@
 #include "engine/vulkan/Window.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cassert>
+#include <cstdint>
 #include <string>
+#include <vector>
 
 [[nodiscard]] vk::raii::ShaderModule Pipeline::createShaderModule(
     Device& device,
@@ -24,7 +26,7 @@ void Pipeline::create(
     std::string entryFnFragment, 
     vk::VertexInputBindingDescription bindingDescription,
     std::vector<vk::VertexInputAttributeDescription> attributeDescriptions,
-    DescriptorSetLayout& dsLayout,
+    std::vector<class DescriptorSetLayout*> dsLayouts,
     Stencil stencil,
     DepthBuffer& depthBuffer,bool depthTesting,
     std::optional<PushConstant*> pushConstant
@@ -116,9 +118,12 @@ void Pipeline::create(
     
     // PipelineLayout (for uniforms later)
     {
+        std::vector<vk::DescriptorSetLayout> dsls;
+        std::ranges::transform(dsLayouts,std::back_inserter(dsls), &DescriptorSetLayout::descriptorSetLayout);
+
         vk::PipelineLayoutCreateInfo pipelineLayoutInfo{ 
-            .setLayoutCount = 1, 
-            .pSetLayouts = &*dsLayout.descriptorSetLayout, 
+            .setLayoutCount = (uint32_t)dsls.size(), 
+            .pSetLayouts = dsls.data(), 
             .pushConstantRangeCount = 0 
         };
         if(pushConstant.has_value()){

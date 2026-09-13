@@ -18,6 +18,9 @@ Sampler2D texture[];
 [[vk::binding(1,0)]]
 Sampler2D texture2[];
 
+[[vk::binding(0, 1)]]
+ConstantBuffer<float4> color;
+
 [shader("vertex")]
 VertexOutput vertMain(uint vertexID: SV_VertexID) {
     return VertexOutput(
@@ -29,5 +32,5 @@ VertexOutput vertMain(uint vertexID: SV_VertexID) {
 [shader("fragment")]
 float4 fragMain(float2 uv: UV) : SV_Target {
     int index = uv.x > 0.5;
-    return texture2[NonUniformResourceIndex(index)].Sample(uv)+float4(1,1,1,1)*0.1;
+    return texture2[NonUniformResourceIndex(index)].Sample(uv)+float4(1,1,1,1)*0.1+color;
 }
