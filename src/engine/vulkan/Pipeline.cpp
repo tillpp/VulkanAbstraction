@@ -27,8 +27,7 @@ void Pipeline::create(
     vk::VertexInputBindingDescription bindingDescription,
     std::vector<vk::VertexInputAttributeDescription> attributeDescriptions,
     std::vector<class DescriptorSetLayout*> dsLayouts,
-    Stencil stencil,
-    DepthBuffer& depthBuffer,bool depthTesting,
+    DepthBuffer& depthBuffer,bool depthTesting,Stencil stencil,
     std::optional<PushConstant*> pushConstant
 ) {
     this->swapchain = &window.swapchain;

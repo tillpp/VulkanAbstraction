@@ -2,8 +2,6 @@
 #include "engine/vulkan/Swapchain.hpp"
 #include "engine/vulkan/Image.hpp"
 
-
-//TODO: look into stencil tests
 class DepthBuffer
 {
     static vk::Format findSupportedFormat(Device& device,const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features,bool withStencil);

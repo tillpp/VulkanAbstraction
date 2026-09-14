@@ -122,7 +122,7 @@ bool App::run(){
         projectDir/"bin/shaders/shader.spv", 
         "vertMain", "fragMain", 
         DefaultVertex::getBindingDescription(), DefaultVertex::getAttributeDescriptions(),
-        {&dsl,&dsl_ubo}, Pipeline::noStencil, window.depthBuffer, false, {});
+        {&dsl,&dsl_ubo}, window.depthBuffer, false, Pipeline::noStencil, {});
 
     
     ds.create(device, window, dsl, {
@@ -195,7 +195,7 @@ bool App::run(){
             // image2->create(window, "assets/deleteme.png");    
             // image ->create(window, "assets/deleteme2.png"); 
             
-            frame.create(window, 1280, 720);            
+            frame.create(window, 128, 72);            
         }
 
         window.beginRendering(cb);

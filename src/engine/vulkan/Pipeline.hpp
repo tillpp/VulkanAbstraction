@@ -30,8 +30,7 @@ public:
         vk::VertexInputBindingDescription bindingDescription,
         std::vector<vk::VertexInputAttributeDescription> attributeDescriptions,
         std::vector<class DescriptorSetLayout*> dsLayouts,
-        Stencil stencil,
-        DepthBuffer& depthBuffer, bool depthTesting,
+        DepthBuffer& depthBuffer, bool depthTesting,Stencil stencil,
         std::optional<class PushConstant*> pushConstant);
     ~Pipeline();
 
